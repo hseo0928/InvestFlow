@@ -32,44 +32,35 @@ jobs:
           echo "🎯 대상: Supabase Edge Function"
           echo "🔧 디버그 모드: ${{ github.event.inputs.debug || 'false' }}"
 
-      - name: 📡 Supabase Edge Function 호출 (github-script)
+      - name: 📡 Supabase Edge Function 호출 (curl)
         id: invoke
-        uses: actions/github-script@v7
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-        with:
-          script: |
-            const url = `${process.env.SUPABASE_URL}/functions/v1/fetch_financial_news`;
-            const headers = {
-              'Authorization': `Bearer ${process.env.SUPABASE_ANON_KEY}`,
-              'apikey': process.env.SUPABASE_ANON_KEY,
-              'User-Agent': 'InvestFlow-GitHub-Actions/1.0'
-            };
-            try {
-              const res = await fetch(url, { method: 'GET', headers });
-              const text = await res.text();
-              core.info(`HTTP ${res.status}`);
-              core.info(text);
-              core.setOutput('status', res.status);
-              core.setOutput('body', text);
-              if (res.status >= 500) core.setFailed(`Server error ${res.status}`);
-            } catch (err) {
-              core.error(`Request error: ${err?.message || err}`);
-              core.setFailed('HTTP request failed');
-            }
+        run: |
+          set -euo pipefail
+          URL="$SUPABASE_URL/functions/v1/fetch_financial_news"
+          echo "🔗 $URL"
+          # Perform request with Authorization (and apikey for good measure)
+          HTTP_CODE=$(curl -sS -o /tmp/resp.json -w "%{http_code}" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            "$URL")
+          echo "HTTP $HTTP_CODE"
+          cat /tmp/resp.json || true
+          echo "status=$HTTP_CODE" >> $GITHUB_OUTPUT
+          BODY=$(cat /tmp/resp.json || echo "")
+          # Fail on server error
+          if [ "$HTTP_CODE" -ge 500 ]; then
+            exit 1
+          fi
 
       - name: 📊 응답 결과 출력
         run: |
           echo "📈 HTTP 상태: ${{ steps.invoke.outputs.status }}"
           echo ""
           echo "📄 응답 내용:"
-          response='${{ steps.invoke.outputs.body }}'
-          if echo "$response" | jq . >/dev/null 2>&1; then
-            echo "$response" | jq .
-          else
-            printf '%b\n' "$response"
-          fi
+          echo "(위 단계에서 출력됨)"
 
       - name: ✅ 성공 통계
         if: ${{ fromJSON(steps.invoke.outputs['status']) >= 200 && fromJSON(steps.invoke.outputs['status']) < 300 }}
