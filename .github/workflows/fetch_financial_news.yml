@@ -39,8 +39,7 @@ jobs:
           url: ${{ secrets.SUPABASE_URL }}/functions/v1/fetch_financial_news
           method: GET
           customHeaders: |
-            Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}
-            User-Agent: InvestFlow-GitHub-Actions/1.0
+            {"Authorization": "Bearer ${{ secrets.SUPABASE_ANON_KEY }}", "User-Agent": "InvestFlow-GitHub-Actions/1.0"}
           timeout: 120000
           retry: 2
           retryWait: 3000
