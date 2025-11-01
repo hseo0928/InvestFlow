@@ -46,13 +46,18 @@ jobs:
               'apikey': process.env.SUPABASE_ANON_KEY,
               'User-Agent': 'InvestFlow-GitHub-Actions/1.0'
             };
-            const res = await fetch(url, { method: 'GET', headers });
-            const text = await res.text();
-            core.info(`HTTP ${res.status}`);
-            core.info(text);
-            core.setOutput('status', res.status);
-            core.setOutput('body', text);
-            if (res.status >= 500) core.setFailed(`Server error ${res.status}`);
+            try {
+              const res = await fetch(url, { method: 'GET', headers });
+              const text = await res.text();
+              core.info(`HTTP ${res.status}`);
+              core.info(text);
+              core.setOutput('status', res.status);
+              core.setOutput('body', text);
+              if (res.status >= 500) core.setFailed(`Server error ${res.status}`);
+            } catch (err) {
+              core.error(`Request error: ${err?.message || err}`);
+              core.setFailed('HTTP request failed');
+            }
 
       - name: 📊 응답 결과 출력
         run: |
