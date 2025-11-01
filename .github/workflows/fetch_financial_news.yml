@@ -32,26 +32,34 @@ jobs:
           echo "🎯 대상: Supabase Edge Function"
           echo "🔧 디버그 모드: ${{ github.event.inputs.debug || 'false' }}"
 
-      - name: 📡 Supabase Edge Function 호출
-        id: http_request
-        uses: fjogeleit/http-request-action@v1.14.2
+      - name: 📡 Supabase Edge Function 호출 (github-script)
+        id: invoke
+        uses: actions/github-script@v7
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         with:
-          url: ${{ secrets.SUPABASE_URL }}/functions/v1/fetch_financial_news
-          method: GET
-          customHeaders: |
-            {"Authorization": "Bearer ${{ secrets.SUPABASE_ANON_KEY }}", "User-Agent": "InvestFlow-GitHub-Actions/1.0"}
-          timeout: 120000
-          retry: 2
-          retryWait: 3000
+          script: |
+            const url = `${process.env.SUPABASE_URL}/functions/v1/fetch_financial_news`;
+            const headers = {
+              'Authorization': `Bearer ${process.env.SUPABASE_ANON_KEY}`,
+              'apikey': process.env.SUPABASE_ANON_KEY,
+              'User-Agent': 'InvestFlow-GitHub-Actions/1.0'
+            };
+            const res = await fetch(url, { method: 'GET', headers });
+            const text = await res.text();
+            core.info(`HTTP ${res.status}`);
+            core.info(text);
+            core.setOutput('status', res.status);
+            core.setOutput('body', text);
+            if (res.status >= 500) core.setFailed(`Server error ${res.status}`);
 
       - name: 📊 응답 결과 출력
         run: |
-          echo "📈 HTTP 상태: ${{ steps.http_request.outputs.status-code }}"
-          echo "⏱️ 응답 시간: ${{ steps.http_request.outputs.response-time }}ms"
+          echo "📈 HTTP 상태: ${{ steps.invoke.outputs.status }}"
           echo ""
           echo "📄 응답 내용:"
-          # JSON 형식으로 예쁘게 출력 (jq 사용)
-          response='${{ steps.http_request.outputs.response }}'
+          response='${{ steps.invoke.outputs.body }}'
           if echo "$response" | jq . >/dev/null 2>&1; then
             echo "$response" | jq .
           else
@@ -59,14 +67,14 @@ jobs:
           fi
 
       - name: ✅ 성공 통계
-        if: ${{ fromJSON(steps.http_request.outputs['status-code']) >= 200 && fromJSON(steps.http_request.outputs['status-code']) < 300 }}
+        if: ${{ fromJSON(steps.invoke.outputs['status']) >= 200 && fromJSON(steps.invoke.outputs['status']) < 300 }}
         run: |
           echo "🎉 뉴스 수집 성공!"
-          echo "📊 상태 코드: ${{ steps.http_request.outputs.status-code }}"
+          echo "📊 상태 코드: ${{ steps.invoke.outputs.status }}"
           echo "⏰ 완료 시간: $(date '+%Y-%m-%d %H:%M:%S %Z')"
 
       - name: ⚠️ 클라이언트 에러 (4xx)
-        if: ${{ fromJSON(steps.http_request.outputs['status-code']) >= 400 && fromJSON(steps.http_request.outputs['status-code']) < 500 }}
+        if: ${{ fromJSON(steps.invoke.outputs['status']) >= 400 && fromJSON(steps.invoke.outputs['status']) < 500 }}
         run: |
           echo "❌ 클라이언트 에러 발생!"
           echo "🔐 Secrets 설정을 확인하세요"
@@ -78,7 +86,7 @@ jobs:
           exit 1
 
       - name: 🚨 서버 에러 (5xx)
-        if: ${{ fromJSON(steps.http_request.outputs['status-code']) >= 500 }}
+        if: ${{ fromJSON(steps.invoke.outputs['status']) >= 500 }}
         run: |
           echo "💥 서버 에러 발생!"
           echo "🔍 Supabase 상태를 확인하세요:"
