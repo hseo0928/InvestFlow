@@ -42,14 +42,17 @@ jobs:
           URL="$SUPABASE_URL/functions/v1/fetch_financial_news"
           echo "🔗 $URL"
           # Perform request with Authorization (and apikey for good measure)
-          HTTP_CODE=$(curl -sS -o /tmp/resp.json -w "%{http_code}" \
+          HTTP_CODE=$(curl -sS \
+            --retry 3 --retry-delay 3 \
+            --connect-timeout 10 --max-time 60 \
+            -o /tmp/resp.json -w "%{http_code}" \
             -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
             -H "apikey: $SUPABASE_ANON_KEY" \
-            "$URL")
+            "$URL" || echo "000")
           echo "HTTP $HTTP_CODE"
           cat /tmp/resp.json || true
           echo "status=$HTTP_CODE" >> $GITHUB_OUTPUT
-          BODY=$(cat /tmp/resp.json || echo "")
+          BODY=$(cat /tmp/resp.json 2>/dev/null || echo "")
           # Fail on server error
           if [ "$HTTP_CODE" -ge 500 ]; then
             exit 1
