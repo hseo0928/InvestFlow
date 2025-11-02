@@ -49,7 +49,10 @@ def main():
     
     # Create and run app
     app = create_app()
-    app.run(debug=config.FLASK_DEBUG, port=config.FLASK_PORT)
+    # Use PORT environment variable for Railway/production
+    import os
+    port = int(os.environ.get('PORT', config.FLASK_PORT))
+    app.run(debug=config.FLASK_DEBUG, host='0.0.0.0', port=port)
 
 if __name__ == '__main__':
     main()

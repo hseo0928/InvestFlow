@@ -36,6 +36,13 @@ jobs:
         env:
           VITE_BACKEND_URL: ${{ secrets.VITE_BACKEND_URL }}
           VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
+          VITE_OPENROUTER_API_KEY: ${{ secrets.VITE_OPENROUTER_API_KEY }}
+          VITE_DEEPL_API_KEY: ${{ secrets.VITE_DEEPL_API_KEY }}
+          VITE_TWELVEDATA_API_KEY: ${{ secrets.VITE_TWELVEDATA_API_KEY }}
+          VITE_KIS_APP_KEY: ${{ secrets.VITE_KIS_APP_KEY }}
+          VITE_KIS_APP_SECRET: ${{ secrets.VITE_KIS_APP_SECRET }}
+          VITE_FINANCIAL_JUICE_RSS: ${{ secrets.VITE_FINANCIAL_JUICE_RSS }}
+          VITE_SAVETICKER_API: ${{ secrets.VITE_SAVETICKER_API }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
