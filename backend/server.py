@@ -32,10 +32,6 @@ def create_app():
     app.register_blueprint(symbols_bp)
     app.register_blueprint(translate_bp)
     
-    # TEMPORARY: Admin routes for data import (REMOVE AFTER USE)
-    from routes.admin_routes import admin_bp
-    app.register_blueprint(admin_bp)
-    
     # Health check endpoint
     @app.route('/api/health', methods=['GET'])
     def health_check():
