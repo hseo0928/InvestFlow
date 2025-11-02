@@ -8,6 +8,7 @@ import re
 from datetime import datetime
 from config.env import config
 from utils.helpers import analyze_sentiment
+from services.database import DatabaseService
 
 
 class NewsService:
@@ -214,12 +215,19 @@ class NewsService:
             return []
     
     def update_cache(self, new_news):
-        """Update news cache with memory management."""
+        """Update news cache with memory management and save to database."""
         current_time = time.time()
         cache_key = 'latest_news'
         
         # Update main cache
         self.news_cache[cache_key] = (new_news, current_time)
+        
+        # Save to database
+        try:
+            DatabaseService.save_news(new_news)
+            print(f"뉴스 DB 저장 완료: {len(new_news)}건")
+        except Exception as e:
+            print(f"뉴스 DB 저장 실패: {e}")
         
         # Clean up old cache entries
         self._cleanup_old_cache_entries()
