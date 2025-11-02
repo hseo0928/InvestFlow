@@ -3,6 +3,7 @@ from flask import Flask, jsonify
 from flask_cors import CORS
 from config.env import config
 from routes import stock_bp, news_bp
+from routes.symbols_routes import symbols_bp
 from services.news_service import news_service
 
 
@@ -14,6 +15,7 @@ def create_app():
     # Register blueprints
     app.register_blueprint(stock_bp)
     app.register_blueprint(news_bp)
+    app.register_blueprint(symbols_bp)
     
     # Health check endpoint
     @app.route('/api/health', methods=['GET'])
