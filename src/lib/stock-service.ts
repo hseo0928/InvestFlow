@@ -199,16 +199,8 @@ export class StockDataService {
         dcf: dcf.status === 'fulfilled' ? dcf.value : undefined
       };
       
-      // Get AI analysis
-      const analysis = await GeminiAPI.analyzeStock(stock, news, chartAnalysis, fundamentals);
-      
-      // Translate AI analysis to Korean
-      try {
-        return await DeepLTranslation.translateAIAnalysis(analysis);
-      } catch (error) {
-        console.warn('[DeepL] AI analysis translation failed:', error);
-        return analysis; // fallback to English
-      }
+      // Analyze stock with AI (includes Korean translation)
+      return await GeminiAPI.analyzeStock(stock, news, chartAnalysis, fundamentals);
     } catch (error) {
       console.warn('Failed to get AI analysis:', error);
       
@@ -313,12 +305,12 @@ export class StockDataService {
         throw new APIError(`Failed to get data for ${symbol}`);
       }
       
-      // Translate news to Korean using DeepL
+      // Translate news to Korean using Gemini
       if (stockNews.length > 0) {
         try {
-          stockNews = await DeepLTranslation.translateNews(stockNews);
+          stockNews = await GeminiAPI.translateNews(stockNews);
         } catch (error) {
-          console.warn('[DeepL] News translation failed:', error);
+          console.warn('[Gemini] News translation failed:', error);
           // Fallback: use original English news
         }
       }

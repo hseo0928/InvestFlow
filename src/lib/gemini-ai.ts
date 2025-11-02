@@ -220,9 +220,6 @@ Provide a 2-3 sentence overview of the current market sentiment and trends. Keep
     }
   }
 
-  // DEPRECATED: Replaced by DeepLTranslation.translateNews()
-  // Preserved as fallback for emergency use
-  /*
   // Translate news to Korean
   static async translateNews(newsItems: NewsItem[]): Promise<NewsItem[]> {
     try {
@@ -287,7 +284,6 @@ SUMMARY: [translated summary]`;
       return newsItems;
     }
   }
-  */
 
   // Check if text is Korean
   private static isKorean(text: string): boolean {
