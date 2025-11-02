@@ -5,9 +5,17 @@ export class NewsAPI {
   // Parse RSS feed from Financial Juice
   static async getFinancialJuiceNews(): Promise<NewsItem[]> {
     try {
+      const rssUrl = API_CONFIG.FINANCIAL_JUICE_RSS;
+      
+      // URL 유효성 검사
+      if (!rssUrl || rssUrl === 'undefined' || rssUrl.trim() === '') {
+        console.warn('⚠️ Financial Juice RSS URL이 설정되지 않음');
+        return [];
+      }
+      
       // Direct fetch without CORS proxy - use RSS2JSON service
-      const rssUrl = encodeURIComponent(API_CONFIG.FINANCIAL_JUICE_RSS);
-      const url = `https://api.rss2json.com/v1/api.json?rss_url=${rssUrl}`;
+      const encodedUrl = encodeURIComponent(rssUrl);
+      const url = `https://api.rss2json.com/v1/api.json?rss_url=${encodedUrl}`;
       
       const response = await fetch(url);
       
@@ -32,7 +40,8 @@ export class NewsAPI {
       
       return news;
     } catch (error) {
-      console.warn('Financial Juice RSS fetch error:', error);
+      console.warn('📰 Financial Juice RSS fetch error:', error);
+      console.warn('📰 RSS URL:', API_CONFIG.FINANCIAL_JUICE_RSS);
       return [];
     }
   }
