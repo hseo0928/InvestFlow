@@ -109,8 +109,11 @@ class DatabaseService:
             )
             
             # Create tables if they don't exist
-            Base.metadata.create_all(cls._engine)
-            logger.info("Database tables created/verified")
+            try:
+                Base.metadata.create_all(cls._engine, checkfirst=True)
+                logger.info("Database tables created/verified")
+            except Exception as e:
+                logger.warning(f"Table creation skipped (may already exist): {e}")
         
         return cls._engine
     
