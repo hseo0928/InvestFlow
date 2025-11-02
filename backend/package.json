@@ -1,0 +1,12 @@
+{
+  "name": "investflow-backend",
+  "version": "1.0.0",
+  "description": "InvestFlow Backend API",
+  "main": "server.py",
+  "scripts": {
+    "start": "python server.py"
+  },
+  "engines": {
+    "python": "3.11.x"
+  }
+}
