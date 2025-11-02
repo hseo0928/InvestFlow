@@ -8,6 +8,7 @@ export const API_CONFIG = {
   OPENROUTER_BASE_URL: 'https://openrouter.ai/api/v1/chat/completions',
   OPENROUTER_SITE_URL: import.meta.env.VITE_SITE_URL,
   OPENROUTER_SITE_TITLE: import.meta.env.VITE_SITE_TITLE,
+  DEEPL_API_KEY: import.meta.env.VITE_DEEPL_API_KEY,
   
   // Base URLs
   GEMINI_BASE_URL: 'https://generativelanguage.googleapis.com/v1beta',

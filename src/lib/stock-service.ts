@@ -2,6 +2,7 @@ import { YahooFinanceAPI } from './yahoo-finance';
 import { TwelveDataAPI } from './twelvedata';
 import { NewsAPI } from './news-api';
 import { GeminiAPI } from './gemini-ai';
+import { DeepLTranslation } from './deepl-translation';
 import { StockQuote, StockSearchResult, ChartDataPoint, NewsItem, AIAnalysis, APIError, API_CONFIG } from './api-config';
 import * as YFinanceAPI from './yfinance-api';
 import * as KISAPI from './kis-api';
@@ -198,7 +199,16 @@ export class StockDataService {
         dcf: dcf.status === 'fulfilled' ? dcf.value : undefined
       };
       
-      return await GeminiAPI.analyzeStock(stock, news, chartAnalysis, fundamentals);
+      // Get AI analysis
+      const analysis = await GeminiAPI.analyzeStock(stock, news, chartAnalysis, fundamentals);
+      
+      // Translate AI analysis to Korean
+      try {
+        return await DeepLTranslation.translateAIAnalysis(analysis);
+      } catch (error) {
+        console.warn('[DeepL] AI analysis translation failed:', error);
+        return analysis; // fallback to English
+      }
     } catch (error) {
       console.warn('Failed to get AI analysis:', error);
       
@@ -303,12 +313,13 @@ export class StockDataService {
         throw new APIError(`Failed to get data for ${symbol}`);
       }
       
-      // Translate news to Korean
+      // Translate news to Korean using DeepL
       if (stockNews.length > 0) {
         try {
-          stockNews = await GeminiAPI.translateNews(stockNews);
+          stockNews = await DeepLTranslation.translateNews(stockNews);
         } catch (error) {
-          console.warn('News translation failed:', error);
+          console.warn('[DeepL] News translation failed:', error);
+          // Fallback: use original English news
         }
       }
       
