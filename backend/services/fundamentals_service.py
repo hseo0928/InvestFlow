@@ -2,6 +2,7 @@
 import yfinance as yf
 import time
 import numpy as np
+import math
 from datetime import datetime
 from services.supabase_fundamentals_cache import supabase_fundamentals_cache
 from services.stock_service import get_quote
@@ -9,6 +10,19 @@ from services.stock_service import get_quote
 
 # L1 Cache: In-memory with 60s TTL
 fundamentals_cache = {}
+
+
+def clean_nan_values(obj):
+    """Recursively convert NaN and inf values to None for JSON serialization."""
+    if isinstance(obj, dict):
+        return {k: clean_nan_values(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [clean_nan_values(item) for item in obj]
+    elif isinstance(obj, float):
+        if math.isnan(obj) or math.isinf(obj):
+            return None
+        return obj
+    return obj
 
 
 def get_income_statement(symbol: str) -> dict:
@@ -338,6 +352,9 @@ def calculate_ratios(symbol: str) -> dict:
             'updated_at': datetime.now().isoformat()
         }
         
+        # Clean NaN values before returning
+        result = clean_nan_values(result)
+        
         # Save to Supabase (L2)
         supabase_fundamentals_cache.save(symbol, 'ratios', result)
         
@@ -509,6 +526,9 @@ def calculate_dcf(symbol: str, growth_rate: float = 0.05, discount_rate: float =
             },
             'updated_at': datetime.now().isoformat()
         }
+        
+        # Clean NaN values before returning
+        result = clean_nan_values(result)
         
         # Save to Supabase (L2) - only default parameters
         if growth_rate == 0.05 and discount_rate == 0.10 and years == 5:
