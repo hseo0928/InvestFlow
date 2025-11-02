@@ -47,6 +47,12 @@ def main():
     app = create_app()
     app.run(debug=config.FLASK_DEBUG, port=config.FLASK_PORT)
 
-
 if __name__ == '__main__':
     main()
+else:
+    # For gunicorn/production WSGI servers
+    app = create_app()
+    # Initialize services for production
+    config.log_configuration()
+    if config.NEWS_SCHEDULER_ENABLED:
+        news_service.start_scheduler()
