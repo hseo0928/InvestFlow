@@ -17,7 +17,7 @@ COPY backend/ ./backend/
 WORKDIR /app/backend
 
 # Expose port (Railway will set PORT env var)
-EXPOSE $PORT
+EXPOSE 8080
 
-# Run gunicorn
-CMD gunicorn server:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+# Run gunicorn with shell to expand PORT variable
+CMD gunicorn server:app --bind 0.0.0.0:${PORT:-8080} --workers 2 --timeout 120
