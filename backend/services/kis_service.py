@@ -14,7 +14,11 @@ class KISService:
         self.token_lock = threading.Lock()
     
     def get_token(self):
-        """Get or refresh KIS access token with thread-safe locking."""
+        """Get or refresh KIS access token with thread-safe locking.
+        
+        KIS API allows 1 token request per minute, but tokens are valid for 24 hours.
+        This method caches the token for the full 24 hours to minimize API calls.
+        """
         current_time = time.time()
         
         # Check if token is still valid
@@ -43,23 +47,25 @@ class KISService:
                 )
                 
                 if response.status_code != 200:
-                    # If we have an old token, keep using it
+                    # If we have an old token, extend it for another hour
                     if self.access_token:
-                        print(f'⚠️ KIS token refresh failed, using cached token: {response.text}')
-                        self.token_expiry = current_time + (5 * 60)  # Extend by 5 minutes
+                        print(f'⚠️ KIS token refresh failed (rate limit), extending cached token: {response.text}')
+                        self.token_expiry = current_time + (60 * 60)  # Extend by 1 hour
                         return self.access_token
                     raise Exception(f'KIS token error: {response.text}')
                 
                 data = response.json()
                 self.access_token = data['access_token']
-                self.token_expiry = current_time + (23 * 60 * 60)  # 23시간
+                # Token is valid for 24 hours (1 day)
+                self.token_expiry = current_time + (24 * 60 * 60)
+                print(f'✅ KIS token acquired, valid for 24 hours')
                 
                 return self.access_token
             except Exception as e:
-                # If we have an old token, keep using it
+                # If we have an old token, extend it for another hour
                 if self.access_token:
-                    print(f'⚠️ KIS token request failed, using cached token: {str(e)}')
-                    self.token_expiry = current_time + (5 * 60)  # Extend by 5 minutes
+                    print(f'⚠️ KIS token request failed, extending cached token: {str(e)}')
+                    self.token_expiry = current_time + (60 * 60)  # Extend by 1 hour
                     return self.access_token
                 raise
     
