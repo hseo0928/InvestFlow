@@ -12,7 +12,11 @@ from services.supabase_stock_service import supabase_stock_cache
 # Reference: https://github.com/ranaroussi/yfinance/issues
 _session = requests.Session()
 _session.headers.update({
-    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Connection': 'keep-alive',
 })
 
 # Rate limiting 방지를 위한 캐시
@@ -20,7 +24,7 @@ quote_cache = {}
 
 # Rate limiting: Track last API call time
 _last_api_call = 0
-_min_api_interval = 0.5  # 500ms between API calls
+_min_api_interval = 1.0  # 1 second between API calls (increased from 0.5s)
 
 
 def get_quote(symbol):
