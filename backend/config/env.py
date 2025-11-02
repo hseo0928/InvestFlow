@@ -26,6 +26,9 @@ class Config:
     KIS_APP_KEY: Optional[str]
     KIS_APP_SECRET: Optional[str]
     
+    # DeepL Translation API
+    DEEPL_API_KEY: Optional[str]
+    
     # News Scheduler Settings
     NEWS_SCHEDULER_ENABLED: bool
     NEWS_SCHEDULER_INTERVAL_SEC: int
@@ -56,6 +59,9 @@ class Config:
             # KIS API Configuration
             KIS_APP_KEY=os.getenv('KIS_APP_KEY'),
             KIS_APP_SECRET=os.getenv('KIS_APP_SECRET'),
+            
+            # DeepL Translation API
+            DEEPL_API_KEY=os.getenv('DEEPL_API_KEY'),
             
             # News Scheduler Settings
             NEWS_SCHEDULER_ENABLED=os.getenv('NEWS_SCHEDULER_ENABLED', 'false').lower() == 'true',
