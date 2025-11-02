@@ -211,31 +211,3 @@ def get_history(symbol, period='1mo', interval='1d'):
         print(f'❌ Error fetching history for {symbol}: {str(e)}')
         traceback.print_exc()
         raise Exception(f'Failed to fetch history for {symbol}: {str(e)}')
-
-
-def search_stocks(query):
-    """Simple stock search - returns popular stocks matching query.
-    
-    Args:
-        query: Search query string
-        
-    Returns:
-        List of matching stocks
-    """
-    query_upper = query.upper()
-    
-    popular_stocks = [
-        {'symbol': 'AAPL', 'name': 'Apple Inc.', 'exchange': 'NASDAQ', 'type': 'stock'},
-        {'symbol': 'GOOGL', 'name': 'Alphabet Inc.', 'exchange': 'NASDAQ', 'type': 'stock'},
-        {'symbol': 'MSFT', 'name': 'Microsoft Corporation', 'exchange': 'NASDAQ', 'type': 'stock'},
-        {'symbol': 'AMZN', 'name': 'Amazon.com Inc.', 'exchange': 'NASDAQ', 'type': 'stock'},
-        {'symbol': 'TSLA', 'name': 'Tesla Inc.', 'exchange': 'NASDAQ', 'type': 'stock'},
-        {'symbol': 'META', 'name': 'Meta Platforms Inc.', 'exchange': 'NASDAQ', 'type': 'stock'},
-        {'symbol': 'NVDA', 'name': 'NVIDIA Corporation', 'exchange': 'NASDAQ', 'type': 'stock'},
-        {'symbol': 'NFLX', 'name': 'Netflix Inc.', 'exchange': 'NASDAQ', 'type': 'stock'},
-        {'symbol': 'AMD', 'name': 'Advanced Micro Devices', 'exchange': 'NASDAQ', 'type': 'stock'},
-        {'symbol': 'CRM', 'name': 'Salesforce Inc.', 'exchange': 'NYSE', 'type': 'stock'},
-    ]
-    
-    results = [s for s in popular_stocks if query_upper in s['symbol'] or query_upper in s['name'].upper()]
-    return results

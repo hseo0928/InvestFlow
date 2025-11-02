@@ -67,28 +67,33 @@ export class StockDataService {
     }
   }
   
-  // Search stocks: TwelveData 먼저, 실패하면 yfinance fallback
+  // Search stocks: Use new symbols API with 6,957 US stocks
   static async searchStocks(query: string): Promise<StockSearchResult[]> {
-    if (!query.trim()) return [];
-    
     try {
-      const results = await TwelveDataAPI.searchStocks(query);
-      if (results.length > 0) return results;
-    } catch (error) {
-      console.warn('TwelveData search failed, trying yfinance:', error);
-    }
-    
-    try {
-      const results = await YFinanceAPI.searchStocks(query);
-      return results.map(r => ({
+      const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5002';
+      const response = await fetch(`${API_BASE}/api/symbols/search?q=${encodeURIComponent(query)}&limit=10`);
+      
+      if (!response.ok) {
+        throw new Error(`Symbols API error: ${response.status}`);
+      }
+      
+      const results = await response.json();
+      return results.map((r: any) => ({
         symbol: r.symbol,
         name: r.name,
-        exchange: 'US',
-        type: 'stock'
+        exchange: r.exchange || 'US',
+        type: r.type || 'stock'
       }));
     } catch (error) {
-      console.warn('Stock search error:', error);
-      return [];
+      console.error('Symbols search error:', error);
+      // Fallback to popular stocks if API fails
+      return [
+        { symbol: "AAPL", name: "Apple Inc.", exchange: "NASDAQ", type: "stock" },
+        { symbol: "MSFT", name: "Microsoft Corporation", exchange: "NASDAQ", type: "stock" },
+        { symbol: "GOOGL", name: "Alphabet Inc.", exchange: "NASDAQ", type: "stock" },
+        { symbol: "AMZN", name: "Amazon.com Inc.", exchange: "NASDAQ", type: "stock" },
+        { symbol: "TSLA", name: "Tesla Inc.", exchange: "NASDAQ", type: "stock" },
+      ];
     }
   }
   

@@ -5,19 +5,6 @@ import { Card } from "./ui/card";
 import { StockDataService } from "../lib/stock-service";
 import { StockSearchResult } from "../lib/api-config";
 
-const popularStocks: StockSearchResult[] = [
-  { symbol: "AAPL", name: "Apple Inc.", exchange: "NASDAQ", type: "stock" },
-  { symbol: "GOOGL", name: "Alphabet Inc.", exchange: "NASDAQ", type: "stock" },
-  { symbol: "MSFT", name: "Microsoft Corporation", exchange: "NASDAQ", type: "stock" },
-  { symbol: "AMZN", name: "Amazon.com Inc.", exchange: "NASDAQ", type: "stock" },
-  { symbol: "TSLA", name: "Tesla Inc.", exchange: "NASDAQ", type: "stock" },
-  { symbol: "META", name: "Meta Platforms Inc.", exchange: "NASDAQ", type: "stock" },
-  { symbol: "NVDA", name: "NVIDIA Corporation", exchange: "NASDAQ", type: "stock" },
-  { symbol: "NFLX", name: "Netflix Inc.", exchange: "NASDAQ", type: "stock" },
-  { symbol: "AMD", name: "Advanced Micro Devices", exchange: "NASDAQ", type: "stock" },
-  { symbol: "CRM", name: "Salesforce Inc.", exchange: "NYSE", type: "stock" },
-];
-
 interface StockSearchProps {
   onSelectStock: (symbol: string) => void;
 }
@@ -26,9 +13,23 @@ export function StockSearch({ onSelectStock }: StockSearchProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [searchResults, setSearchResults] = useState<StockSearchResult[]>([]);
+  const [popularStocks, setPopularStocks] = useState<StockSearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
+
+  // Load popular stocks on mount
+  useEffect(() => {
+    async function loadPopularStocks() {
+      try {
+        const results = await StockDataService.searchStocks("");
+        setPopularStocks(results);
+      } catch (error) {
+        console.error('Failed to load popular stocks:', error);
+      }
+    }
+    loadPopularStocks();
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {

@@ -1,6 +1,6 @@
 """Stock-related API routes."""
 from flask import Blueprint, jsonify, request
-from services.stock_service import get_quote, get_history, search_stocks
+from services.stock_service import get_quote, get_history
 from services.kis_service import kis_service
 
 stock_bp = Blueprint('stock', __name__, url_prefix='/api')
@@ -32,17 +32,6 @@ def get_stock_history(symbol):
         print(f"Error fetching history for {symbol}: {str(e)}")
         import traceback
         traceback.print_exc()
-        return jsonify({'error': str(e)}), 500
-
-
-@stock_bp.route('/search', methods=['GET'])
-def search():
-    """Search for stocks."""
-    try:
-        query = request.args.get('q', '').upper()
-        results = search_stocks(query)
-        return jsonify(results)
-    except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 
