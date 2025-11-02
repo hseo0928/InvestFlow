@@ -1,9 +1,17 @@
 """
 Migrate data from Supabase to Railway PostgreSQL
 Run this script once to transfer existing data
+
+Usage:
+  railway run python backend/migrate_supabase_to_railway.py
 """
 import requests
 import os
+import sys
+
+# Add backend to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
+
 from services.database import DatabaseService
 from config.env import config
 
