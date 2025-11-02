@@ -6,13 +6,8 @@ import yfinance as yf
 from config.env import config
 from utils.cache import cache
 
-try:
-    from curl_cffi import requests as cf_requests
-    # TLS Fingerprinting 우회를 위한 curl_cffi 세션 생성
-    cf_session = cf_requests.Session(impersonate="chrome")
-except ImportError:
-    # curl_cffi가 없으면 일반 requests 사용
-    cf_session = None
+# Disable curl_cffi due to compatibility issues
+cf_session = None
 
 # Rate limiting 방지를 위한 캐시
 quote_cache = {}
