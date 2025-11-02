@@ -4,6 +4,7 @@
   import path from 'path';
 
   export default defineConfig({
+    base: '/InvestFlow/', // GitHub Pages repository name
     plugins: [react()],
     resolve: {
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
