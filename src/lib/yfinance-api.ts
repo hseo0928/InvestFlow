@@ -2,7 +2,7 @@
  * Python yfinance 백엔드 API 클라이언트
  */
 
-const API_BASE_URL = 'http://localhost:5002/api';
+const API_BASE_URL = `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5002'}/api`;
 
 export interface StockQuote {
   symbol: string;

@@ -3,7 +3,7 @@
  * 미국 주식 시세 조회
  */
 
-const API_BASE_URL = 'http://localhost:5002/api/kis';
+const API_BASE_URL = `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5002'}/api/kis`;
 
 export interface KISQuote {
   symbol: string;
