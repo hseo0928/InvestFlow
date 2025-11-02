@@ -1,5 +1,6 @@
 """KIS (Korea Investment & Securities) API service."""
 import time
+import threading
 import requests
 from config.env import config
 
@@ -10,35 +11,57 @@ class KISService:
     def __init__(self):
         self.access_token = None
         self.token_expiry = 0
+        self.token_lock = threading.Lock()
     
     def get_token(self):
-        """Get or refresh KIS access token."""
+        """Get or refresh KIS access token with thread-safe locking."""
         current_time = time.time()
         
+        # Check if token is still valid
         if self.access_token and self.token_expiry > current_time:
             return self.access_token
         
-        if not config.KIS_APP_KEY or not config.KIS_APP_SECRET:
-            return None
-        
-        response = requests.post(
-            f'https://openapi.koreainvestment.com:9443/oauth2/tokenP',
-            json={
-                'grant_type': 'client_credentials',
-                'appkey': config.KIS_APP_KEY,
-                'appsecret': config.KIS_APP_SECRET
-            },
-            headers={'Content-Type': 'application/json'}
-        )
-        
-        if response.status_code != 200:
-            raise Exception(f'KIS token error: {response.text}')
-        
-        data = response.json()
-        self.access_token = data['access_token']
-        self.token_expiry = current_time + (23 * 60 * 60)  # 23시간
-        
-        return self.access_token
+        # Use lock to prevent multiple simultaneous token requests
+        with self.token_lock:
+            # Double-check after acquiring lock
+            if self.access_token and self.token_expiry > current_time:
+                return self.access_token
+            
+            if not config.KIS_APP_KEY or not config.KIS_APP_SECRET:
+                return None
+            
+            try:
+                response = requests.post(
+                    f'https://openapi.koreainvestment.com:9443/oauth2/tokenP',
+                    json={
+                        'grant_type': 'client_credentials',
+                        'appkey': config.KIS_APP_KEY,
+                        'appsecret': config.KIS_APP_SECRET
+                    },
+                    headers={'Content-Type': 'application/json'},
+                    timeout=10
+                )
+                
+                if response.status_code != 200:
+                    # If we have an old token, keep using it
+                    if self.access_token:
+                        print(f'⚠️ KIS token refresh failed, using cached token: {response.text}')
+                        self.token_expiry = current_time + (5 * 60)  # Extend by 5 minutes
+                        return self.access_token
+                    raise Exception(f'KIS token error: {response.text}')
+                
+                data = response.json()
+                self.access_token = data['access_token']
+                self.token_expiry = current_time + (23 * 60 * 60)  # 23시간
+                
+                return self.access_token
+            except Exception as e:
+                # If we have an old token, keep using it
+                if self.access_token:
+                    print(f'⚠️ KIS token request failed, using cached token: {str(e)}')
+                    self.token_expiry = current_time + (5 * 60)  # Extend by 5 minutes
+                    return self.access_token
+                raise
     
     def get_quote(self, symbol, exchange_code='NAS'):
         """Get stock quote from KIS API.
