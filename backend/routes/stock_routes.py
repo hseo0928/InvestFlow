@@ -2,6 +2,7 @@
 from flask import Blueprint, jsonify, request
 from services.stock_service import get_quote, get_history
 from services.kis_service import kis_service
+from services.fundamentals_service import get_income_statement, get_balance_sheet
 
 stock_bp = Blueprint('stock', __name__, url_prefix='/api')
 
@@ -71,3 +72,30 @@ def get_kis_stock_history(symbol):
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
+
+
+@stock_bp.route('/fundamentals/<symbol>/income', methods=['GET'])
+def get_income(symbol):
+    """Get income statement (annual + quarterly) for a stock."""
+    try:
+        data = get_income_statement(symbol)
+        return jsonify(data)
+    except Exception as e:
+        print(f"Error fetching income for {symbol}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@stock_bp.route('/fundamentals/<symbol>/balance', methods=['GET'])
+def get_balance(symbol):
+    """Get balance sheet (annual + quarterly) for a stock."""
+    try:
+        data = get_balance_sheet(symbol)
+        return jsonify(data)
+    except Exception as e:
+        print(f"Error fetching balance for {symbol}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
