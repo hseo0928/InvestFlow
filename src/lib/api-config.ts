@@ -13,6 +13,7 @@ export const API_CONFIG = {
   GEMINI_BASE_URL: 'https://generativelanguage.googleapis.com/v1beta',
   TWELVEDATA_BASE_URL: 'https://api.twelvedata.com',
   YFINANCE_BASE_URL: 'https://query1.finance.yahoo.com/v8/finance/chart',
+  BACKEND_API_URL: 'http://localhost:5002/api',
   
   // Request timeouts
   TIMEOUT: 10000,

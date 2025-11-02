@@ -4,6 +4,7 @@ import { Badge } from "./ui/badge";
 import { StockChart } from "./StockChart";
 import { NewsAnalysis } from "./NewsAnalysis";
 import { AIAnalysis } from "./AIAnalysis";
+import { FundamentalsPanel } from "./FundamentalsPanel";
 import { TrendingUp, TrendingDown, Volume2, DollarSign, BarChart3, Loader2, AlertCircle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { StockDataService } from "../lib/stock-service";
@@ -153,55 +154,68 @@ export function StockAnalysis({ stockSymbol }: StockAnalysisProps) {
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Chart */}
+        {/* Left Column - Chart & AI Analysis */}
         <div className="lg:col-span-2 space-y-6">
-          <Card className="border-slate-200">
-            <CardHeader>
-              <div className="flex items-center justify-between relative z-10" style={{ pointerEvents: 'auto' }}>
-                <CardTitle>차트</CardTitle>
-                <div className="flex items-center gap-3">
-                  {(['1d', '1w', '1mo'] as const).map((period) => {
-                    const periodLabels = {
-                      '1d': '일봉',
-                      '1w': '주봉',
-                      '1mo': '월봉'
-                    };
-                    
-                    return (
-                      <button
-                        key={period}
-                        onClick={() => setSelectedPeriod(period)}
-                        className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                          selectedPeriod === period 
-                            ? 'bg-slate-100 text-slate-900' 
-                            : 'hover:bg-slate-50 text-slate-600'
-                        }`}
-                      >
-                        {periodLabels[period]}
-                      </button>
-                    );
-                  })}
-                  <DrawingToolbar
-                    mode={drawingMode}
-                    onModeChange={setDrawingMode}
-                    onAiSuggest={async () => {
-                      const levels = await AiSrService.suggest(stockSymbol, selectedPeriod);
-                      window.dispatchEvent(new CustomEvent('aisr-levels', { detail: { symbol: stockSymbol, period: selectedPeriod, levels } }));
-                    }}
-                    onClearAI={() => {
-                      window.dispatchEvent(new CustomEvent('clear-ai-levels', { detail: { symbol: stockSymbol, period: selectedPeriod } }));
-                    }}
-                  />
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <StockChart stockSymbol={stockSymbol} period={selectedPeriod} drawingMode={drawingMode} />
-            </CardContent>
-          </Card>
+          <Tabs defaultValue="chart" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="chart">차트 분석</TabsTrigger>
+              <TabsTrigger value="fundamentals">재무 분석</TabsTrigger>
+            </TabsList>
 
-          {/* AI Analysis */}
-          {aiAnalysis && <AIAnalysis analysis={aiAnalysis} stockSymbol={stockSymbol} />}
+            <TabsContent value="chart" className="space-y-6">
+              <Card className="border-slate-200">
+                <CardHeader>
+                  <div className="flex items-center justify-between relative z-10" style={{ pointerEvents: 'auto' }}>
+                    <CardTitle>차트</CardTitle>
+                    <div className="flex items-center gap-3">
+                      {(['1d', '1w', '1mo'] as const).map((period) => {
+                        const periodLabels = {
+                          '1d': '일봉',
+                          '1w': '주봉',
+                          '1mo': '월봉'
+                        };
+                        
+                        return (
+                          <button
+                            key={period}
+                            onClick={() => setSelectedPeriod(period)}
+                            className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                              selectedPeriod === period 
+                                ? 'bg-slate-100 text-slate-900' 
+                                : 'hover:bg-slate-50 text-slate-600'
+                            }`}
+                          >
+                            {periodLabels[period]}
+                          </button>
+                        );
+                      })}
+                      <DrawingToolbar
+                        mode={drawingMode}
+                        onModeChange={setDrawingMode}
+                        onAiSuggest={async () => {
+                          const levels = await AiSrService.suggest(stockSymbol, selectedPeriod);
+                          window.dispatchEvent(new CustomEvent('aisr-levels', { detail: { symbol: stockSymbol, period: selectedPeriod, levels } }));
+                        }}
+                        onClearAI={() => {
+                          window.dispatchEvent(new CustomEvent('clear-ai-levels', { detail: { symbol: stockSymbol, period: selectedPeriod } }));
+                        }}
+                      />
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <StockChart stockSymbol={stockSymbol} period={selectedPeriod} drawingMode={drawingMode} />
+                </CardContent>
+              </Card>
+
+              {/* AI Analysis */}
+              {aiAnalysis && <AIAnalysis analysis={aiAnalysis} stockSymbol={stockSymbol} />}
+            </TabsContent>
+
+            <TabsContent value="fundamentals" className="space-y-6">
+              <FundamentalsPanel stockSymbol={stockSymbol} />
+            </TabsContent>
+          </Tabs>
         </div>
 
         {/* Right Column - News */}

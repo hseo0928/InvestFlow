@@ -2,7 +2,7 @@
 from flask import Blueprint, jsonify, request
 from services.stock_service import get_quote, get_history
 from services.kis_service import kis_service
-from services.fundamentals_service import get_income_statement, get_balance_sheet, calculate_ratios
+from services.fundamentals_service import get_income_statement, get_balance_sheet, calculate_ratios, calculate_dcf
 
 stock_bp = Blueprint('stock', __name__, url_prefix='/api')
 
@@ -111,4 +111,39 @@ def get_ratios(symbol):
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
+
+
+@stock_bp.route('/fundamentals/<symbol>/dcf', methods=['GET'])
+def get_dcf(symbol):
+    """Get DCF (Discounted Cash Flow) valuation for a stock.
+    
+    Query parameters:
+        growth_rate: Expected FCF growth rate (default: 0.05 = 5%)
+        discount_rate: WACC / discount rate (default: 0.10 = 10%)
+        years: Projection period (default: 5)
+    """
+    try:
+        # Get user-adjustable parameters
+        growth_rate = float(request.args.get('growth_rate', 0.05))
+        discount_rate = float(request.args.get('discount_rate', 0.10))
+        years = int(request.args.get('years', 5))
+        
+        # Validate parameters
+        if not (0 < growth_rate < 1):
+            return jsonify({'error': 'growth_rate must be between 0 and 1'}), 400
+        if not (0 < discount_rate < 1):
+            return jsonify({'error': 'discount_rate must be between 0 and 1'}), 400
+        if not (1 <= years <= 20):
+            return jsonify({'error': 'years must be between 1 and 20'}), 400
+        if discount_rate <= growth_rate:
+            return jsonify({'error': 'discount_rate must be greater than growth_rate'}), 400
+        
+        data = calculate_dcf(symbol, growth_rate, discount_rate, years)
+        return jsonify(data)
+    except Exception as e:
+        print(f"Error calculating DCF for {symbol}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
 

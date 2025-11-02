@@ -20,12 +20,16 @@ export class GeminiAPI {
   static async analyzeStock(
     stock: StockQuote,
     news: NewsItem[],
-    chartData?: { recentTrend: 'up' | 'down' | 'sideways'; volatility: 'high' | 'medium' | 'low' }
+    chartData?: { recentTrend: 'up' | 'down' | 'sideways'; volatility: 'high' | 'medium' | 'low' },
+    fundamentals?: {
+      ratios?: any;
+      dcf?: any;
+    }
   ): Promise<AIAnalysis> {
     // Try Gemini first
     try {
       const client = this.getClient();
-      const prompt = this.buildAnalysisPrompt(stock, news, chartData);
+      const prompt = this.buildAnalysisPrompt(stock, news, chartData, fundamentals);
       
       const response = await client.models.generateContent({
         model: 'gemini-2.5-flash',
@@ -43,7 +47,7 @@ export class GeminiAPI {
       
       // Fallback to OpenRouter
       try {
-        const prompt = this.buildAnalysisPrompt(stock, news, chartData);
+        const prompt = this.buildAnalysisPrompt(stock, news, chartData, fundamentals);
         const openRouterResponse = await this.analyzeWithOpenRouter(prompt);
         return this.parseAnalysisResponse(openRouterResponse);
       } catch (openRouterError) {
@@ -59,7 +63,11 @@ export class GeminiAPI {
   private static buildAnalysisPrompt(
     stock: StockQuote,
     news: NewsItem[],
-    chartData?: { recentTrend: 'up' | 'down' | 'sideways'; volatility: 'high' | 'medium' | 'low' }
+    chartData?: { recentTrend: 'up' | 'down' | 'sideways'; volatility: 'high' | 'medium' | 'low' },
+    fundamentals?: {
+      ratios?: any;
+      dcf?: any;
+    }
   ): string {
     const newsContext = news.length > 0 
       ? news.map(n => `- ${n.title}: ${n.summary}`).join('\n')
@@ -68,6 +76,30 @@ export class GeminiAPI {
     const chartContext = chartData 
       ? `Recent price trend: ${chartData.recentTrend}, Volatility: ${chartData.volatility}`
       : 'No chart analysis available';
+    
+    // Add fundamentals context
+    let fundamentalsContext = '';
+    if (fundamentals?.ratios) {
+      const r = fundamentals.ratios;
+      fundamentalsContext += '\n\nFundamental Ratios:';
+      if (r.profitability) {
+        fundamentalsContext += `\n- Profitability: ROE ${r.profitability.roe?.toFixed(2)}%, ROA ${r.profitability.roa?.toFixed(2)}%, Net Margin ${r.profitability.net_margin?.toFixed(2)}%`;
+      }
+      if (r.financial_health) {
+        fundamentalsContext += `\n- Financial Health: Debt-to-Equity ${r.financial_health.debt_to_equity?.toFixed(2)}, Current Ratio ${r.financial_health.current_ratio?.toFixed(2)}`;
+      }
+      if (r.valuation) {
+        fundamentalsContext += `\n- Valuation: P/E ${r.valuation.pe_ratio?.toFixed(2)}, P/B ${r.valuation.pb_ratio?.toFixed(2)}`;
+      }
+    }
+    
+    if (fundamentals?.dcf) {
+      const dcf = fundamentals.dcf;
+      fundamentalsContext += '\n\nDCF Valuation:';
+      fundamentalsContext += `\n- Intrinsic Value: $${dcf.intrinsic_value_per_share?.toFixed(2)}`;
+      fundamentalsContext += `\n- Current Price: $${dcf.current_price?.toFixed(2)}`;
+      fundamentalsContext += `\n- Margin of Safety: ${dcf.margin_of_safety?.toFixed(2)}%`;
+    }
     
     return `
 As a financial analyst AI, provide a comprehensive analysis of ${stock.symbol} (${stock.name}).
@@ -78,6 +110,7 @@ Current Stock Data:
 - Volume: ${stock.volume.toLocaleString()}
 - Day Range: $${stock.low.toFixed(2)} - $${stock.high.toFixed(2)}
 - Previous Close: $${stock.previousClose.toFixed(2)}
+${fundamentalsContext}
 
 Recent News:
 ${newsContext}
@@ -96,8 +129,9 @@ Please provide your analysis in the following JSON format:
 }
 
 Ensure the confidence score is between 0 and 1, where 1 is highest confidence.
-Base your analysis on the provided data, news sentiment, and general market knowledge.
+Base your analysis on the provided data, news sentiment, fundamental ratios, DCF valuation, and general market knowledge.
 Be objective and mention both positive and negative factors.
+${fundamentals?.dcf?.margin_of_safety ? `Consider the ${fundamentals.dcf.margin_of_safety > 0 ? 'positive' : 'negative'} margin of safety (${fundamentals.dcf.margin_of_safety.toFixed(2)}%) in your valuation assessment.` : ''}
 `;
   }
   

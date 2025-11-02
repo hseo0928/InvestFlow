@@ -1,6 +1,7 @@
 """Financial fundamentals service with 3-tier caching."""
 import yfinance as yf
 import time
+import numpy as np
 from datetime import datetime
 from services.supabase_fundamentals_cache import supabase_fundamentals_cache
 from services.stock_service import get_quote
@@ -343,6 +344,7 @@ def calculate_ratios(symbol: str) -> dict:
         # Save to memory (L1)
         fundamentals_cache[cache_key] = (result, current_time)
         
+        
         print(f'✅ Calculated ratios for {symbol}')
         
         return result
@@ -350,4 +352,175 @@ def calculate_ratios(symbol: str) -> dict:
     except Exception as e:
         print(f'❌ Error calculating ratios for {symbol}: {e}')
         raise
+
+
+def calculate_dcf(symbol: str, growth_rate: float = 0.05, discount_rate: float = 0.10, years: int = 5) -> dict:
+    """Calculate Discounted Cash Flow (DCF) valuation.
+    
+    DCF Model components:
+    1. Free Cash Flow (FCF) projection for N years
+    2. Terminal Value using Gordon Growth Model
+    3. Present Value calculation with discount rate (WACC)
+    4. Intrinsic Value per share = (PV of FCFs + PV of Terminal Value - Net Debt) / Shares Outstanding
+    
+    Args:
+        symbol: Stock symbol
+        growth_rate: Expected FCF growth rate (default: 5%)
+        discount_rate: WACC / discount rate (default: 10%)
+        years: Projection period (default: 5 years)
+        
+    Returns:
+        Dict with DCF calculation details and intrinsic value
+    """
+    cache_key = f'{symbol}_dcf_{growth_rate}_{discount_rate}_{years}'
+    current_time = time.time()
+    
+    # L1: Memory cache (60s) - only for default parameters
+    if growth_rate == 0.05 and discount_rate == 0.10 and years == 5:
+        if cache_key in fundamentals_cache:
+            data, cached_time = fundamentals_cache[cache_key]
+            if current_time - cached_time < 60:
+                print(f'✅ Memory cache hit for {symbol} DCF (age: {current_time - cached_time:.1f}s)')
+                return data
+        
+        # L2: Supabase cache (24h)
+        cached = supabase_fundamentals_cache.get(symbol, 'dcf')
+        if cached:
+            print(f'✅ Supabase fundamentals cache hit for {symbol} DCF')
+            fundamentals_cache[cache_key] = (cached, current_time)
+            return cached
+    
+    try:
+        print(f'📊 Calculating DCF for {symbol}...')
+        
+        # Get cash flow data
+        ticker = yf.Ticker(symbol)
+        print(f'📡 Fetching {symbol} cash flow from yfinance...')
+        cashflow = ticker.cashflow
+        
+        if cashflow.empty:
+            raise ValueError(f'No cash flow data available for {symbol}')
+        
+        # Extract Free Cash Flow (use most recent value)
+        fcf_row = None
+        for fcf_key in ['Free Cash Flow', 'FreeCashFlow', 'Free Cash Flow From Operations']:
+            if fcf_key in cashflow.index:
+                fcf_row = cashflow.loc[fcf_key]
+                break
+        
+        if fcf_row is None or fcf_row.empty:
+            raise ValueError(f'Free Cash Flow not available for {symbol}')
+        
+        # Get latest FCF (first column is most recent)
+        latest_fcf = float(fcf_row.iloc[0])
+        
+        if latest_fcf <= 0:
+            raise ValueError(f'Latest FCF is non-positive ({latest_fcf:,.0f}) for {symbol}')
+        
+        # Project future cash flows
+        projected_fcf = []
+        for i in range(1, years + 1):
+            projected = latest_fcf * ((1 + growth_rate) ** i)
+            projected_fcf.append(float(projected))
+        
+        # Calculate present values of projected FCF
+        pv_fcf = []
+        for i, fcf in enumerate(projected_fcf, start=1):
+            pv = fcf / ((1 + discount_rate) ** i)
+            pv_fcf.append(float(pv))
+        
+        # Terminal value (Gordon Growth Model)
+        # Terminal FCF = Last projected FCF * (1 + growth_rate)
+        # Terminal Value = Terminal FCF / (discount_rate - growth_rate)
+        terminal_fcf = projected_fcf[-1] * (1 + growth_rate)
+        
+        if discount_rate <= growth_rate:
+            raise ValueError(f'Discount rate ({discount_rate}) must be > growth rate ({growth_rate})')
+        
+        terminal_value = terminal_fcf / (discount_rate - growth_rate)
+        pv_terminal = terminal_value / ((1 + discount_rate) ** years)
+        
+        # Enterprise value = Sum of PV of FCFs + PV of Terminal Value
+        enterprise_value = sum(pv_fcf) + pv_terminal
+        
+        # Get balance sheet for net debt calculation
+        print(f'📡 Fetching {symbol} balance sheet from yfinance...')
+        balance = ticker.balance_sheet
+        
+        total_debt = 0
+        cash = 0
+        
+        if not balance.empty:
+            # Try multiple column names for total debt
+            for debt_key in ['Total Debt', 'Long Term Debt', 'Net Debt']:
+                if debt_key in balance.index:
+                    total_debt = float(balance.loc[debt_key].iloc[0])
+                    break
+            
+            # Try multiple column names for cash
+            for cash_key in ['Cash And Cash Equivalents', 'Cash', 'Cash Cash Equivalents And Short Term Investments']:
+                if cash_key in balance.index:
+                    cash = float(balance.loc[cash_key].iloc[0])
+                    break
+        
+        net_debt = total_debt - cash
+        
+        # Equity value = Enterprise value - Net debt
+        equity_value = enterprise_value - net_debt
+        
+        # Get shares outstanding
+        info = ticker.info
+        shares_outstanding = info.get('sharesOutstanding', 0)
+        
+        if shares_outstanding == 0:
+            raise ValueError(f'Shares outstanding not available for {symbol}')
+        
+        # Intrinsic value per share
+        intrinsic_value_per_share = equity_value / shares_outstanding
+        
+        # Get current price for comparison
+        quote = get_quote(symbol)
+        current_price = quote.get('currentPrice', 0) or quote.get('regularMarketPrice', 0) or quote.get('price', 0)
+        
+        # Margin of Safety = (Intrinsic Value - Current Price) / Intrinsic Value * 100
+        if intrinsic_value_per_share > 0 and current_price > 0:
+            margin_of_safety = ((intrinsic_value_per_share - current_price) / intrinsic_value_per_share) * 100
+        else:
+            margin_of_safety = None
+        
+        result = {
+            'symbol': symbol,
+            'latest_fcf': float(latest_fcf),
+            'projected_fcf': projected_fcf,
+            'pv_fcf': pv_fcf,
+            'terminal_value': float(terminal_value),
+            'pv_terminal': float(pv_terminal),
+            'enterprise_value': float(enterprise_value),
+            'net_debt': float(net_debt),
+            'equity_value': float(equity_value),
+            'shares_outstanding': int(shares_outstanding),
+            'intrinsic_value_per_share': round(intrinsic_value_per_share, 2),
+            'current_price': float(current_price),
+            'margin_of_safety': round(margin_of_safety, 2) if margin_of_safety is not None else None,
+            'assumptions': {
+                'growth_rate': growth_rate,
+                'discount_rate': discount_rate,
+                'projection_years': years
+            },
+            'updated_at': datetime.now().isoformat()
+        }
+        
+        # Save to Supabase (L2) - only default parameters
+        if growth_rate == 0.05 and discount_rate == 0.10 and years == 5:
+            supabase_fundamentals_cache.save(symbol, 'dcf', result)
+            fundamentals_cache[cache_key] = (result, current_time)
+        
+        print(f'✅ Calculated DCF for {symbol}: Intrinsic ${intrinsic_value_per_share:.2f} vs Current ${current_price:.2f}')
+        
+        return result
+        
+    except Exception as e:
+        print(f'❌ Error calculating DCF for {symbol}: {e}')
+        raise
+
 

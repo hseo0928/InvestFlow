@@ -2,7 +2,7 @@ import { YahooFinanceAPI } from './yahoo-finance';
 import { TwelveDataAPI } from './twelvedata';
 import { NewsAPI } from './news-api';
 import { GeminiAPI } from './gemini-ai';
-import { StockQuote, StockSearchResult, ChartDataPoint, NewsItem, AIAnalysis, APIError } from './api-config';
+import { StockQuote, StockSearchResult, ChartDataPoint, NewsItem, AIAnalysis, APIError, API_CONFIG } from './api-config';
 import * as YFinanceAPI from './yfinance-api';
 import * as KISAPI from './kis-api';
 import { formatVolume } from '../components/ui/utils';
@@ -187,7 +187,18 @@ export class StockDataService {
         chartAnalysis = this.analyzeChartData(chartData);
       }
       
-      return await GeminiAPI.analyzeStock(stock, news, chartAnalysis);
+      // Fetch fundamentals data in parallel
+      const [ratios, dcf] = await Promise.allSettled([
+        this.getFundamentalsRatios(stock.symbol),
+        this.getFundamentalsDCF(stock.symbol)
+      ]);
+      
+      const fundamentals = {
+        ratios: ratios.status === 'fulfilled' ? ratios.value : undefined,
+        dcf: dcf.status === 'fulfilled' ? dcf.value : undefined
+      };
+      
+      return await GeminiAPI.analyzeStock(stock, news, chartAnalysis, fundamentals);
     } catch (error) {
       console.warn('Failed to get AI analysis:', error);
       
@@ -205,6 +216,20 @@ export class StockDataService {
         riskFactors: ['Market volatility', 'Economic uncertainty', 'Company-specific risks'],
       };
     }
+  }
+  
+  // Get fundamentals ratios
+  static async getFundamentalsRatios(symbol: string): Promise<any> {
+    const response = await fetch(`${API_CONFIG.BACKEND_API_URL}/fundamentals/${symbol}/ratios`);
+    if (!response.ok) throw new Error('Failed to fetch ratios');
+    return await response.json();
+  }
+  
+  // Get DCF valuation
+  static async getFundamentalsDCF(symbol: string): Promise<any> {
+    const response = await fetch(`${API_CONFIG.BACKEND_API_URL}/fundamentals/${symbol}/dcf`);
+    if (!response.ok) throw new Error('Failed to fetch DCF');
+    return await response.json();
   }
   
   // Generate market summary

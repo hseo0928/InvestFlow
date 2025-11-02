@@ -10,3 +10,4 @@ feedparser==6.0.11
 gunicorn==21.2.0
 fuzzywuzzy==0.18.0
 python-Levenshtein==0.21.1
+numpy==1.26.4
