@@ -1,7 +1,10 @@
 """KIS (Korea Investment & Securities) API service."""
+import os
 import time
 import threading
 import requests
+import json
+from pathlib import Path
 from config.env import config
 
 
@@ -12,16 +15,50 @@ class KISService:
         self.access_token = None
         self.token_expiry = 0
         self.token_lock = threading.Lock()
+        # File-based token cache (shared across gunicorn workers)
+        self.token_cache_file = Path('/tmp/kis_token_cache.json')
+    
+    def _load_token_from_file(self):
+        """Load token from file cache."""
+        try:
+            if self.token_cache_file.exists():
+                with open(self.token_cache_file, 'r') as f:
+                    data = json.load(f)
+                    self.access_token = data.get('access_token')
+                    self.token_expiry = data.get('token_expiry', 0)
+                    
+                    # Check if loaded token is still valid
+                    if self.access_token and self.token_expiry > time.time():
+                        remaining_hours = (self.token_expiry - time.time()) / 3600
+                        print(f'📂 KIS token loaded from cache (valid for {remaining_hours:.1f} hours)')
+                        return True
+        except Exception as e:
+            print(f'⚠️ Failed to load KIS token from cache: {e}')
+        return False
+    
+    def _save_token_to_file(self):
+        """Save token to file cache."""
+        try:
+            data = {
+                'access_token': self.access_token,
+                'token_expiry': self.token_expiry
+            }
+            with open(self.token_cache_file, 'w') as f:
+                json.dump(data, f)
+            print(f'💾 KIS token saved to cache')
+        except Exception as e:
+            print(f'⚠️ Failed to save KIS token to cache: {e}')
     
     def get_token(self):
         """Get or refresh KIS access token with thread-safe locking.
         
         KIS API allows 1 token request per minute, but tokens are valid for 24 hours.
         This method caches the token for the full 24 hours to minimize API calls.
+        Token is stored in file system to share across gunicorn workers.
         """
         current_time = time.time()
         
-        # Check if token is still valid
+        # Check memory cache first
         if self.access_token and self.token_expiry > current_time:
             return self.access_token
         
@@ -29,6 +66,10 @@ class KISService:
         with self.token_lock:
             # Double-check after acquiring lock
             if self.access_token and self.token_expiry > current_time:
+                return self.access_token
+            
+            # Try loading from file cache (shared across workers)
+            if self._load_token_from_file():
                 return self.access_token
             
             if not config.KIS_APP_KEY or not config.KIS_APP_SECRET:
@@ -51,6 +92,7 @@ class KISService:
                     if self.access_token:
                         print(f'⚠️ KIS token refresh failed (rate limit), extending cached token: {response.text}')
                         self.token_expiry = current_time + (60 * 60)  # Extend by 1 hour
+                        self._save_token_to_file()
                         return self.access_token
                     raise Exception(f'KIS token error: {response.text}')
                 
@@ -60,12 +102,16 @@ class KISService:
                 self.token_expiry = current_time + (24 * 60 * 60)
                 print(f'✅ KIS token acquired, valid for 24 hours')
                 
+                # Save to file cache for other workers
+                self._save_token_to_file()
+                
                 return self.access_token
             except Exception as e:
                 # If we have an old token, extend it for another hour
                 if self.access_token:
                     print(f'⚠️ KIS token request failed, extending cached token: {str(e)}')
                     self.token_expiry = current_time + (60 * 60)  # Extend by 1 hour
+                    self._save_token_to_file()
                     return self.access_token
                 raise
     
