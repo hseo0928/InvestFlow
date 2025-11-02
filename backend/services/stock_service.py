@@ -8,11 +8,19 @@ from config.env import config
 from utils.cache import cache
 from services.supabase_stock_service import supabase_stock_cache
 
-# Disable curl_cffi due to compatibility issues
-cf_session = None
+# Create a persistent session to avoid 429 errors
+# Reference: https://github.com/ranaroussi/yfinance/issues
+_session = requests.Session()
+_session.headers.update({
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+})
 
 # Rate limiting 방지를 위한 캐시
 quote_cache = {}
+
+# Rate limiting: Track last API call time
+_last_api_call = 0
+_min_api_interval = 0.5  # 500ms between API calls
 
 
 def get_quote(symbol):
@@ -48,9 +56,16 @@ def get_quote(symbol):
     source = 'yfinance'
     result = None
     
+    # Rate limiting: Wait if needed
+    global _last_api_call
+    elapsed = time.time() - _last_api_call
+    if elapsed < _min_api_interval:
+        time.sleep(_min_api_interval - elapsed)
+    _last_api_call = time.time()
+    
     try:
-        # Try yfinance first
-        ticker = yf.Ticker(symbol, session=cf_session) if cf_session else yf.Ticker(symbol)
+        # Try yfinance first with persistent session
+        ticker = yf.Ticker(symbol, session=_session)
         
         # Try to get info with error handling
         try:
@@ -138,10 +153,17 @@ def get_history(symbol, period='1mo', interval='1d'):
         Exception: If data fetch fails or no data found
     """
     try:
+        # Rate limiting: Wait if needed
+        global _last_api_call
+        elapsed = time.time() - _last_api_call
+        if elapsed < _min_api_interval:
+            time.sleep(_min_api_interval - elapsed)
+        _last_api_call = time.time()
+        
         # Check if we already have some historical data in Supabase
         last_date = supabase_stock_cache.get_last_history_date(symbol)
         
-        ticker = yf.Ticker(symbol, session=cf_session)
+        ticker = yf.Ticker(symbol, session=_session)
         
         if last_date:
             # Incremental loading: fetch only missing data
