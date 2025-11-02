@@ -52,6 +52,37 @@ class AIAnalysis(Base):
     analysis = Column(JSON, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+class StockQuote(Base):
+    """Stock quote cache table"""
+    __tablename__ = 'stock_quotes'
+    
+    symbol = Column(String, primary_key=True)
+    price = Column(Float)
+    change = Column(Float)
+    change_percent = Column(Float)
+    volume = Column(Float)
+    market_cap = Column(Float)
+    open_price = Column(Float)
+    high = Column(Float)
+    low = Column(Float)
+    previous_close = Column(Float)
+    data = Column(JSON)  # Full quote data
+    updated_at = Column(DateTime, default=datetime.utcnow)
+
+class StockHistory(Base):
+    """Stock price history table"""
+    __tablename__ = 'stock_history'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    symbol = Column(String, nullable=False)
+    date = Column(DateTime, nullable=False)
+    open = Column(Float)
+    high = Column(Float)
+    low = Column(Float)
+    close = Column(Float)
+    volume = Column(Float)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
 class DatabaseService:
     """PostgreSQL database service"""
     _engine = None
@@ -225,6 +256,123 @@ class DatabaseService:
             session.rollback()
             logger.error(f"Error saving AI analysis: {e}")
             return False
+        finally:
+            session.close()
+    
+    @classmethod
+    def save_quote(cls, symbol: str, quote: Dict[str, Any]) -> bool:
+        """Save stock quote to database"""
+        session = cls.get_session()
+        
+        try:
+            stock_quote = StockQuote(
+                symbol=symbol,
+                price=quote.get('price'),
+                change=quote.get('change'),
+                change_percent=quote.get('changePercent'),
+                volume=quote.get('volume'),
+                market_cap=quote.get('marketCap'),
+                open_price=quote.get('open'),
+                high=quote.get('high'),
+                low=quote.get('low'),
+                previous_close=quote.get('previousClose'),
+                data=quote,
+                updated_at=datetime.utcnow()
+            )
+            session.merge(stock_quote)
+            session.commit()
+            logger.info(f"Saved quote for {symbol}")
+            return True
+            
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Error saving quote: {e}")
+            return False
+        finally:
+            session.close()
+    
+    @classmethod
+    def get_quote(cls, symbol: str, max_age_minutes: int = 5) -> Optional[Dict[str, Any]]:
+        """Get stock quote from database if not expired"""
+        from datetime import timedelta
+        session = cls.get_session()
+        
+        try:
+            quote = session.query(StockQuote).filter_by(symbol=symbol).first()
+            
+            if quote:
+                age = datetime.utcnow() - quote.updated_at
+                if age < timedelta(minutes=max_age_minutes):
+                    logger.info(f"Cache hit for {symbol} quote (age: {age.seconds}s)")
+                    return quote.data
+                else:
+                    logger.info(f"Cache expired for {symbol} quote (age: {age.seconds}s)")
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error getting quote: {e}")
+            return None
+        finally:
+            session.close()
+    
+    @classmethod
+    def save_history(cls, symbol: str, history: List[Dict[str, Any]]) -> int:
+        """Save stock price history to database"""
+        session = cls.get_session()
+        saved_count = 0
+        
+        try:
+            for item in history:
+                hist = StockHistory(
+                    symbol=symbol,
+                    date=item.get('date'),
+                    open=item.get('open'),
+                    high=item.get('high'),
+                    low=item.get('low'),
+                    close=item.get('close'),
+                    volume=item.get('volume'),
+                    created_at=datetime.utcnow()
+                )
+                session.add(hist)
+                saved_count += 1
+            
+            session.commit()
+            logger.info(f"Saved {saved_count} history records for {symbol}")
+            return saved_count
+            
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Error saving history: {e}")
+            return 0
+        finally:
+            session.close()
+    
+    @classmethod
+    def get_history(cls, symbol: str, days: int = 365) -> List[Dict[str, Any]]:
+        """Get stock price history from database"""
+        from datetime import timedelta
+        session = cls.get_session()
+        
+        try:
+            cutoff_date = datetime.utcnow() - timedelta(days=days)
+            history = session.query(StockHistory).filter(
+                StockHistory.symbol == symbol,
+                StockHistory.date >= cutoff_date
+            ).order_by(StockHistory.date.desc()).all()
+            
+            return [{
+                'date': h.date.isoformat() if h.date else None,
+                'open': h.open,
+                'high': h.high,
+                'low': h.low,
+                'close': h.close,
+                'volume': h.volume
+            } for h in history]
+            
+        except Exception as e:
+            logger.error(f"Error getting history: {e}")
+            return []
         finally:
             session.close()
 
