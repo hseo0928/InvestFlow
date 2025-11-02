@@ -12,3 +12,5 @@ fuzzywuzzy==0.18.0
 python-Levenshtein==0.21.1
 numpy==1.26.4
 deepl==1.23.0
+psycopg2-binary==2.9.9
+sqlalchemy==2.0.23

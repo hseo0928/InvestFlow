@@ -11,7 +11,20 @@ from services.news_service import news_service
 def create_app():
     """Create and configure Flask application."""
     app = Flask(__name__)
-    CORS(app)
+    
+    # Configure CORS to allow GitHub Pages
+    CORS(app, resources={
+        r"/api/*": {
+            "origins": [
+                "https://hseo0928.github.io",
+                "http://localhost:5173",
+                "http://localhost:3000"
+            ],
+            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization"],
+            "supports_credentials": True
+        }
+    })
     
     # Register blueprints
     app.register_blueprint(stock_bp)
