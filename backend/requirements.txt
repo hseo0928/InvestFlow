@@ -1,7 +1,7 @@
 flask==3.0.0
 flask-cors==4.0.0
 yfinance==0.2.48
-requests==2.32.3
+requests>=2.32.4
 python-dotenv==1.0.0
 beautifulsoup4==4.12.2
 lxml==4.9.3
