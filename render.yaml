@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: investflow-backend
+    runtime: python
+    buildCommand: cd backend && pip install -r requirements.txt
+    startCommand: cd backend && gunicorn server:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: KIS_APP_KEY
+        sync: false
+      - key: KIS_APP_SECRET
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: NEWS_SCHEDULER_ENABLED
+        value: false
+      - key: PYTHON_VERSION
+        value: 3.11.0

@@ -1,6 +1,23 @@
 """Cache management utilities"""
 import time
 
+# Simple cache class for compatibility
+class SimpleCache:
+    def __init__(self):
+        self.data = {}
+    
+    def get(self, key):
+        return self.data.get(key)
+    
+    def set(self, key, value, ttl=60):
+        self.data[key] = (value, time.time() + ttl)
+    
+    def clear(self):
+        self.data.clear()
+
+# Global cache instance
+cache = SimpleCache()
+
 # Cache stores
 quote_cache = {}
 news_cache = {}
