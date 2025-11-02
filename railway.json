@@ -5,7 +5,7 @@
     "buildCommand": "pip install -r backend/requirements.txt"
   },
   "deploy": {
-    "startCommand": "gunicorn --pythonpath backend --bind 0.0.0.0:$PORT --workers 2 server:app",
+    "startCommand": "cd backend && gunicorn --bind 0.0.0.0:${PORT:-5002} --workers 2 server:app",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
   }
