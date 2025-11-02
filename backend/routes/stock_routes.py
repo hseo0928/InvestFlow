@@ -2,7 +2,7 @@
 from flask import Blueprint, jsonify, request
 from services.stock_service import get_quote, get_history
 from services.kis_service import kis_service
-from services.fundamentals_service import get_income_statement, get_balance_sheet
+from services.fundamentals_service import get_income_statement, get_balance_sheet, calculate_ratios
 
 stock_bp = Blueprint('stock', __name__, url_prefix='/api')
 
@@ -95,6 +95,19 @@ def get_balance(symbol):
         return jsonify(data)
     except Exception as e:
         print(f"Error fetching balance for {symbol}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@stock_bp.route('/fundamentals/<symbol>/ratios', methods=['GET'])
+def get_ratios(symbol):
+    """Get financial ratios (profitability, health, valuation) for a stock."""
+    try:
+        data = calculate_ratios(symbol)
+        return jsonify(data)
+    except Exception as e:
+        print(f"Error calculating ratios for {symbol}: {str(e)}")
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
