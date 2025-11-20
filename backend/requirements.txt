@@ -4,13 +4,15 @@ yfinance==0.2.48
 requests>=2.32.4
 python-dotenv==1.0.0
 beautifulsoup4==4.12.2
-lxml==4.9.3
+# lxml==4.9.3
 curl_cffi==0.6.0
 feedparser==6.0.11
 gunicorn==21.2.0
-fuzzywuzzy==0.18.0
-python-Levenshtein==0.21.1
+# fuzzywuzzy==0.18.0
+# python-Levenshtein==0.21.1
 numpy==1.26.4
 deepl==1.23.0
-psycopg2-binary==2.9.9
+# psycopg2-binary==2.9.9
 sqlalchemy==2.0.23
+google-generativeai>=0.3.0
+schedule>=1.2.0

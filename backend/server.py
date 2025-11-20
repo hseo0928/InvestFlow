@@ -51,21 +51,21 @@ def main():
     
     print("Flask 서버 시작 중...")
     
-    # Start news scheduler if enabled
-    if config.NEWS_SCHEDULER_ENABLED:
-        if news_service.start_scheduler():
-            print("뉴스 수집 스케줄러가 백그라운드에서 시작되었습니다.")
-        else:
-            print("뉴스 수집 스케줄러가 이미 실행 중입니다.")
-    else:
-        print("뉴스 수집 스케줄러 비활성화됨 (NEWS_SCHEDULER_ENABLED=false)")
+    # Start centralized scheduler
+    from services.scheduler_service import scheduler_service
+    scheduler_service.start()
+    print("중앙 스케줄러가 백그라운드에서 시작되었습니다.")
     
     # Create and run app
     app = create_app()
     # Use PORT environment variable for Railway/production
     import os
     port = int(os.environ.get('PORT', config.FLASK_PORT))
-    app.run(debug=config.FLASK_DEBUG, host='0.0.0.0', port=port)
+    try:
+        app.run(debug=config.FLASK_DEBUG, host='0.0.0.0', port=port)
+    finally:
+        # Ensure scheduler stops on exit
+        scheduler_service.stop()
 
 if __name__ == '__main__':
     main()

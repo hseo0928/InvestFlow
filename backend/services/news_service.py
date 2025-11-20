@@ -1,7 +1,6 @@
 """News collection and caching service."""
 import time
 import random
-import threading
 import requests
 import feedparser
 import re
@@ -16,7 +15,6 @@ class NewsService:
     
     def __init__(self):
         self.news_cache = {}
-        self.scheduler_running = False
         
         # Financial Juice state
         self.fj_last_fetch_ts = 0.0
@@ -265,40 +263,13 @@ class NewsService:
             if current_time - cached_time < config.NEWS_CACHE_DURATION:
                 return cached_news, True
         
+        # If memory cache miss, try DB
+        db_news = DatabaseService.get_news(limit=50)
+        if db_news:
+             self.news_cache[cache_key] = (db_news, current_time)
+             return db_news, True
+
         return None, False
-    
-    def news_collection_scheduler(self):
-        """Background scheduler to collect news periodically."""
-        self.scheduler_running = True
-        print(f"뉴스 수집 스케줄러 시작 (간격: {config.NEWS_SCHEDULER_INTERVAL_SEC}s ± 지터)")
-        
-        while self.scheduler_running:
-            try:
-                print("스케줄러: 뉴스 수집 시작...")
-                latest_news = self.collect_all_news()
-                
-                if latest_news:
-                    self.update_cache(latest_news)
-                    print(f"스케줄러: 뉴스 수집 완료 - {len(latest_news)}건")
-                else:
-                    print("스케줄러: 수집된 뉴스가 없습니다")
-                
-                # Wait with jitter
-                sleep_time = config.NEWS_SCHEDULER_INTERVAL_SEC + random.uniform(0, 5)
-                time.sleep(sleep_time)
-                
-            except Exception as e:
-                print(f"스케줄러 에러: {e}")
-                sleep_time = config.NEWS_SCHEDULER_INTERVAL_SEC + random.uniform(0, 5)
-                time.sleep(sleep_time)
-    
-    def start_scheduler(self):
-        """Start news scheduler as daemon thread."""
-        if not self.scheduler_running:
-            scheduler_thread = threading.Thread(target=self.news_collection_scheduler, daemon=True)
-            scheduler_thread.start()
-            return True
-        return False
 
 
 # Global news service instance

@@ -147,3 +147,43 @@ def get_dcf(symbol):
         return jsonify({'error': str(e)}), 500
 
 
+@stock_bp.route('/analysis/<symbol>', methods=['GET'])
+def get_stock_analysis(symbol):
+    """Get AI-powered stock analysis."""
+    try:
+        # Gather data for AI
+        from services.stock_service import get_quote
+        from services.fundamentals_service import calculate_ratios
+        from services.news_service import news_service
+        from services.ai_service import ai_service
+        
+        # 1. Get Price
+        try:
+            quote = get_quote(symbol)
+        except:
+            quote = {}
+            
+        # 2. Get Fundamentals
+        try:
+            fundamentals = calculate_ratios(symbol)
+        except:
+            fundamentals = {}
+            
+        # 3. Get News
+        news, _ = news_service.get_cached_news()
+        if not news:
+            news = []
+            
+        # 4. Generate Analysis
+        analysis = ai_service.generate_stock_analysis(symbol, fundamentals, news, quote)
+        
+        return jsonify(analysis)
+        
+    except Exception as e:
+        print(f"Error generating analysis for {symbol}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+

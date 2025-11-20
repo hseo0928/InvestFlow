@@ -29,6 +29,9 @@ class Config:
     # DeepL Translation API
     DEEPL_API_KEY: Optional[str]
     
+    # Google Gemini API
+    GEMINI_API_KEY: Optional[str]
+    
     # News Scheduler Settings
     NEWS_SCHEDULER_ENABLED: bool
     NEWS_SCHEDULER_INTERVAL_SEC: int
@@ -63,6 +66,9 @@ class Config:
             # DeepL Translation API
             DEEPL_API_KEY=os.getenv('DEEPL_API_KEY'),
             
+            # Google Gemini API
+            GEMINI_API_KEY=os.getenv('GEMINI_API_KEY'),
+            
             # News Scheduler Settings
             NEWS_SCHEDULER_ENABLED=os.getenv('NEWS_SCHEDULER_ENABLED', 'false').lower() == 'true',
             NEWS_SCHEDULER_INTERVAL_SEC=int(os.getenv('NEWS_SCHEDULER_INTERVAL_SEC', '120')),
@@ -91,6 +97,9 @@ class Config:
         
         if not self.KIS_APP_KEY or not self.KIS_APP_SECRET:
             warnings.append('KIS API credentials not set - Korean stock features will be limited')
+            
+        if not self.GEMINI_API_KEY:
+            warnings.append('GEMINI_API_KEY not set - AI analysis will not work')
         
         # Validate ranges
         if self.FLASK_PORT < 1024 or self.FLASK_PORT > 65535:
@@ -114,6 +123,7 @@ class Config:
         print(f"Port: {self.FLASK_PORT}")
         print(f"Supabase: {'✓' if self.SUPABASE_URL else '✗'}")
         print(f"KIS API: {'✓' if self.KIS_APP_KEY else '✗'}")
+        print(f"Gemini API: {'✓' if self.GEMINI_API_KEY else '✗'}")
         print(f"News Scheduler: {'Enabled' if self.NEWS_SCHEDULER_ENABLED else 'Disabled'}")
         print("="*50 + "\n")
         
