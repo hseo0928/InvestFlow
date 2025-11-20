@@ -1,4 +1,4 @@
 """Config package."""
-from .settings import Config
+from .env import Config
 
 __all__ = ['Config']

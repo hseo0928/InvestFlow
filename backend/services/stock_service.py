@@ -5,7 +5,7 @@ import traceback
 from datetime import datetime, timedelta
 import yfinance as yf
 from config.env import config
-from utils.cache import cache
+
 from services.database import DatabaseService
 
 # Create a persistent session to avoid 429 errors
