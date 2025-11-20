@@ -359,17 +359,23 @@ def calculate_ratios(symbol: str) -> dict:
         
         # Extract key metrics (handle both yahooquery and yfinance field names)
         net_income = (latest_income.get('NetIncome') or 
-                     latest_income.get('Net Income') or 
-                     latest_income.get('NetIncomeCommonStockholders') or 0)
+                     latest_income.get('NetIncomeCommonStockholders') or
+                     latest_income.get('Net Income') or 0)
         revenue = (latest_income.get('TotalRevenue') or
-                  latest_income.get('Total Revenue') or 
                   latest_income.get('OperatingRevenue') or
-                  latest_income.get('Operating Revenue') or 0)
-        total_equity = latest_balance.get('Stockholders Equity', 0) or latest_balance.get('Total Equity Gross Minority Interest', 0) or latest_balance.get('Common Stock Equity', 0)
-        total_assets = latest_balance.get('Total Assets', 0)
-        total_debt = latest_balance.get('Total Debt', 0) or 0
-        current_assets = latest_balance.get('Current Assets', 0) or latest_balance.get('Total Current Assets', 0)
-        current_liabilities = latest_balance.get('Current Liabilities', 0) or latest_balance.get('Total Current Liabilities', 0)
+                  latest_income.get('Total Revenue') or 0)
+        total_equity = (latest_balance.get('StockholdersEquity') or
+                       latest_balance.get('CommonStockEquity') or 
+                       latest_balance.get('Stockholders Equity') or 
+                       latest_balance.get('Total Equity Gross Minority Interest') or 0)
+        total_assets = (latest_balance.get('TotalAssets') or
+                       latest_balance.get('Total Assets') or 0)
+        total_debt = (latest_balance.get('TotalDebt') or
+                     latest_balance.get('Total Debt') or 0)
+        current_assets = (latest_balance.get('CurrentAssets') or
+                         latest_balance.get('Total Current Assets') or 0)
+        current_liabilities = (latest_balance.get('CurrentLiabilities') or
+                              latest_balance.get('Total Current Liabilities') or 0)
         
         # Calculate profitability ratios
         roe = _safe_divide(net_income, total_equity, None) * 100 if total_equity else None
