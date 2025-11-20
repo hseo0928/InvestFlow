@@ -6,8 +6,8 @@ from datetime import datetime
 from typing import Dict, Optional
 from services.database import DatabaseService
 from services.stock_service import get_quote
+from services.yahooquery_service import yahooquery_service
 
-# Initialize config and clients
 db_service = DatabaseService()
 
 
@@ -69,8 +69,27 @@ def get_income_statement(symbol: str) -> dict:
             print(f'✅ Memory cache hit for {symbol}/income (age: {age:.1f}s)')
             return data
     
-    # L3: Fetch from yfinance API
-    print(f'📡 Fetching {symbol} income from yfinance...')
+    # L3: Fetch from API - Try yahooquery first, then yfinance fallback
+    print(f'📡 Fetching {symbol} income statement...')
+    
+    # Try yahooquery first (more reliable in 2025)
+    try:
+        print(f'  → Trying yahooquery for {symbol} income...')
+        result = yahooquery_service.get_income_statement(symbol)
+        
+        # Check if we got data
+        if result.get('annual') or result.get('quarterly'):
+            # Save to memory (L1)
+            fundamentals_cache[cache_key] = (result, current_time)
+            print(f'✅ Fetched {symbol} income from yahooquery')
+            return result
+        else:
+            print(f'⚠️ yahooquery returned no data for {symbol}, trying yfinance fallback...')
+    except Exception as e:
+        print(f'⚠️ yahooquery failed for {symbol}: {e}, trying yfinance fallback...')
+    
+    # Fallback to yfinance
+    print(f'📡 Fetching {symbol} income from yfinance (fallback)...')
     try:
         ticker = yf.Ticker(symbol)
         
@@ -136,8 +155,25 @@ def get_balance_sheet(symbol: str) -> dict:
             print(f'✅ Memory cache hit for {symbol}/balance (age: {age:.1f}s)')
             return data
     
-    # L3: Fetch from yfinance API
-    print(f'📡 Fetching {symbol} balance from yfinance...')
+    # L3: Fetch from API - Try yahooquery first, then yfinance fallback
+    print(f'📡 Fetching {symbol} balance sheet...')
+    
+    # Try yahooquery first
+    try:
+        print(f'  → Trying yahooquery for {symbol} balance...')
+        result = yahooquery_service.get_balance_sheet(symbol)
+        
+        if result.get('annual') or result.get('quarterly'):
+            fundamentals_cache[cache_key] = (result, current_time)
+            print(f'✅ Fetched {symbol} balance from yahooquery')
+            return result
+        else:
+            print(f'⚠️ yahooquery returned no data for {symbol}, trying yfinance fallback...')
+    except Exception as e:
+        print(f'⚠️ yahooquery failed for {symbol}: {e}, trying yfinance fallback...')
+    
+    # Fallback to yfinance
+    print(f'📡 Fetching {symbol} balance from yfinance (fallback)...')
     try:
         ticker = yf.Ticker(symbol)
         
