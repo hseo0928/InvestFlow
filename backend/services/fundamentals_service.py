@@ -1,11 +1,14 @@
 """Financial fundamentals service with 3-tier caching."""
 import yfinance as yf
 import time
-import numpy as np
 import math
 from datetime import datetime
+from typing import Dict, Optional
 from services.database import DatabaseService
 from services.stock_service import get_quote
+
+# Initialize config and clients
+db_service = DatabaseService()
 
 
 # L1 Cache: In-memory with 60s TTL
@@ -66,7 +69,7 @@ def get_income_statement(symbol: str) -> dict:
             print(f'✅ Memory cache hit for {symbol}/income (age: {age:.1f}s)')
             return data
     
-    # L3: Fetch from yfinance API (Skipping L2 for raw data to simplify for now, or could use StockFundamentals)
+    # L3: Fetch from yfinance API
     print(f'📡 Fetching {symbol} income from yfinance...')
     try:
         ticker = yf.Ticker(symbol)
