@@ -71,9 +71,20 @@ def get_income_statement(symbol: str) -> dict:
     try:
         ticker = yf.Ticker(symbol)
         
-        # Fetch annual and quarterly data
-        annual = ticker.financials  # Annual income statement
-        quarterly = ticker.quarterly_financials  # Quarterly income statement
+        # Fetch annual and quarterly data using new yfinance API
+        # Fallback to legacy API if new properties don't work
+        try:
+            annual = ticker.income_stmt  # Annual income statement (new API)
+            quarterly = ticker.quarterly_income_stmt  # Quarterly income statement (new API)
+        except (AttributeError, ValueError):
+            # Fallback to legacy method
+            try:
+                annual = ticker.get_income_stmt(legacy=True, freq='yearly')
+                quarterly = ticker.get_income_stmt(legacy=True, freq='quarterly')
+            except:
+                # Last resort: old property names
+                annual = ticker.financials
+                quarterly = ticker.quarterly_financials
         
         # Convert DataFrames to JSON - transpose to get dates as rows
         annual_data = []
@@ -127,9 +138,19 @@ def get_balance_sheet(symbol: str) -> dict:
     try:
         ticker = yf.Ticker(symbol)
         
-        # Fetch annual and quarterly data
-        annual = ticker.balance_sheet  # Annual balance sheet
-        quarterly = ticker.quarterly_balance_sheet  # Quarterly balance sheet
+        # Fetch annual and quarterly data using new yfinance API
+        try:
+            annual = ticker.balance_sheet  # Annual balance sheet (new API)
+            quarterly = ticker.quarterly_balance_sheet  # Quarterly balance sheet (new API)
+        except (AttributeError, ValueError):
+            # Fallback to legacy method
+            try:
+                annual = ticker.get_balance_sheet(legacy=True, freq='yearly')
+                quarterly = ticker.get_balance_sheet(legacy=True, freq='quarterly')
+            except:
+                # Last resort: old property names (which likely still work for balance sheet)
+                annual = ticker.balance_sheet
+                quarterly = ticker.quarterly_balance_sheet
         
         # Convert DataFrames to JSON - transpose to get dates as rows
         annual_data = []
