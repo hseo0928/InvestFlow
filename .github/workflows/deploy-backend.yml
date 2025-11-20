@@ -21,6 +21,6 @@ jobs:
         run: npm install -g @railway/cli
 
       - name: Deploy to Railway
-        run: railway up --service backend
+        run: railway up --service InvestFlow
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
