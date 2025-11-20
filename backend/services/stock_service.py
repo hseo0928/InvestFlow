@@ -55,8 +55,8 @@ def get_quote(symbol):
         quote_cache[cache_key] = (db_quote, current_time)
         return db_quote
     
-    # L3: API calls (yfinance → KIS fallback)
-    source = 'yfinance'
+    # L3: API calls (KIS → yfinance fallback)
+    source = 'kis'
     result = None
     
     # Rate limiting: Wait if needed
@@ -67,67 +67,68 @@ def get_quote(symbol):
     _last_api_call = time.time()
     
     try:
-        # Try yfinance first with persistent session
-        ticker = yf.Ticker(symbol, session=_session)
+        # Try KIS API first
+        from services.kis_service import kis_service
+        result = kis_service.get_quote(symbol)
+        print(f'✅ KIS API quote fetched for {symbol}')
         
-        # Try to get info with error handling
+    except Exception as kis_error:
+        print(f'❌ KIS API failed for {symbol}: {str(kis_error)}')
+        print('🔄 Falling back to yfinance...')
+        source = 'yfinance'
+        
+        # Fallback to yfinance
         try:
-            info = ticker.info
-        except (AttributeError, KeyError, TypeError) as e:
-            print(f'⚠️ yfinance info fetch error for {symbol}: {str(e)}')
-            # Try alternative method using fast_info
+            # Try yfinance with persistent session
+            ticker = yf.Ticker(symbol, session=_session)
+            
+            # Try to get info with error handling
             try:
-                fast_info = ticker.fast_info
-                info = {
-                    'currentPrice': fast_info.get('last_price'),
-                    'previousClose': fast_info.get('previous_close'),
-                    'regularMarketPrice': fast_info.get('last_price'),
-                    'volume': fast_info.get('last_volume'),
-                    'shortName': symbol.upper()
-                }
-            except Exception:
-                raise Exception(f'Failed to fetch data from yfinance for {symbol}')
-        
-        # Extract current price info
-        current_price = info.get('currentPrice') or info.get('regularMarketPrice') or info.get('ask', 0)
-        previous_close = info.get('previousClose', 0)
-        
-        if current_price == 0:
-            current_price = info.get('bid', 0)
-        
-        change = current_price - previous_close if previous_close else 0
-        change_percent = (change / previous_close * 100) if previous_close else 0
-        
-        result = {
-            'symbol': symbol.upper(),
-            'name': info.get('longName', info.get('shortName', symbol.upper())),
-            'price': float(current_price),
-            'change': float(change),
-            'changePercent': float(change_percent),
-            'volume': info.get('volume', info.get('regularMarketVolume', 0)),
-            'marketCap': info.get('marketCap', 0),
-            'high': info.get('dayHigh', info.get('regularMarketDayHigh', current_price)),
-            'low': info.get('dayLow', info.get('regularMarketDayLow', current_price)),
-            'open': info.get('open', info.get('regularMarketOpen', current_price)),
-            'previousClose': float(previous_close),
-        }
-        
-        print(f'✅ yfinance quote fetched for {symbol}')
-        
-    except Exception as yf_error:
-        print(f'❌ yfinance failed for {symbol}: {str(yf_error)}')
-        print('🔄 Falling back to KIS API...')
-        
-        # Fallback to KIS API
-        try:
-            from services.kis_service import kis_service
-            result = kis_service.get_quote(symbol)
-            source = 'kis'
-            print(f'✅ KIS API quote fetched for {symbol}')
-        except Exception as kis_error:
-            print(f'❌ KIS API also failed for {symbol}: {str(kis_error)}')
+                info = ticker.info
+            except (AttributeError, KeyError, TypeError) as e:
+                print(f'⚠️ yfinance info fetch error for {symbol}: {str(e)}')
+                # Try alternative method using fast_info
+                try:
+                    fast_info = ticker.fast_info
+                    info = {
+                        'currentPrice': fast_info.get('last_price'),
+                        'previousClose': fast_info.get('previous_close'),
+                        'regularMarketPrice': fast_info.get('last_price'),
+                        'volume': fast_info.get('last_volume'),
+                        'shortName': symbol.upper()
+                    }
+                except Exception:
+                    raise Exception(f'Failed to fetch data from yfinance for {symbol}')
+            
+            # Extract current price info
+            current_price = info.get('currentPrice') or info.get('regularMarketPrice') or info.get('ask', 0)
+            previous_close = info.get('previousClose', 0)
+            
+            if current_price == 0:
+                current_price = info.get('bid', 0)
+            
+            change = current_price - previous_close if previous_close else 0
+            change_percent = (change / previous_close * 100) if previous_close else 0
+            
+            result = {
+                'symbol': symbol.upper(),
+                'name': info.get('longName', info.get('shortName', symbol.upper())),
+                'price': float(current_price),
+                'change': float(change),
+                'changePercent': float(change_percent),
+                'volume': info.get('volume', info.get('regularMarketVolume', 0)),
+                'marketCap': info.get('marketCap', 0),
+                'high': info.get('dayHigh', info.get('regularMarketDayHigh', current_price)),
+                'low': info.get('dayLow', info.get('regularMarketDayLow', current_price)),
+                'open': info.get('open', info.get('regularMarketOpen', current_price)),
+                'previousClose': float(previous_close),
+            }
+            
+            print(f'✅ yfinance quote fetched for {symbol}')
+        except Exception as yf_error:
+            print(f'❌ yfinance also failed for {symbol}: {str(yf_error)}')
             traceback.print_exc()
-            raise Exception(f'Failed to fetch quote for {symbol}: Both yfinance and KIS failed')
+            raise Exception(f'Failed to fetch quote for {symbol}: Both KIS and yfinance failed')
     
     if result:
         # Save to Database cache

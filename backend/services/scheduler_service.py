@@ -48,9 +48,9 @@ class SchedulerService:
         schedule.every(interval).seconds.do(self._job_collect_news)
         print(f"📅 Job registered: Collect News every {interval}s")
 
-        # 2. Stock Price Update (Every 1 hour)
-        schedule.every(1).hours.do(self._job_update_stocks)
-        print(f"📅 Job registered: Update Stocks every 1 hour")
+        # 2. Stock Price Update (Every 15 minutes)
+        schedule.every(15).minutes.do(self._job_update_stocks)
+        print(f"📅 Job registered: Update Stocks every 15 minutes")
 
     def _job_collect_news(self):
         """Job: Collect news."""
