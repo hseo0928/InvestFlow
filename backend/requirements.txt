@@ -8,8 +8,8 @@ lxml==4.9.3
 curl_cffi==0.6.0
 feedparser==6.0.11
 gunicorn==21.2.0
-# fuzzywuzzy==0.18.0
-# python-Levenshtein==0.21.1
+fuzzywuzzy==0.18.0
+python-Levenshtein==0.21.1
 numpy==1.26.4
 deepl==1.23.0
 psycopg2-binary
