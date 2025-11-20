@@ -339,16 +339,32 @@ def calculate_ratios(symbol: str) -> dict:
         balance = get_balance_sheet(symbol)
         quote = get_quote(symbol)
         
-        # Extract latest values
-        latest_income = _get_latest_data(income.get('annual', {}))
-        latest_balance = _get_latest_data(balance.get('annual', {}))
+        # Extract latest values - handle both list (yahooquery) and dict (yfinance) formats
+        if isinstance(income.get('annual'), list) and len(income.get('annual', [])) > 0:
+            # yahooquery format: list of dicts
+            latest_income = income['annual'][0]  # First item is most recent
+        else:
+            # yfinance format: dict
+            latest_income = _get_latest_data(income.get('annual', {}))
+        
+        if isinstance(balance.get('annual'), list) and len(balance.get('annual', [])) > 0:
+            # yahooquery format
+            latest_balance = balance['annual'][0]
+        else:
+            # yfinance format
+            latest_balance = _get_latest_data(balance.get('annual', {}))
         
         if not latest_income or not latest_balance:
             raise ValueError(f'No financial data available for {symbol}')
         
-        # Extract key metrics
-        net_income = latest_income.get('Net Income', 0)
-        revenue = latest_income.get('Total Revenue', 0) or latest_income.get('Operating Revenue', 0)
+        # Extract key metrics (handle both yahooquery and yfinance field names)
+        net_income = (latest_income.get('NetIncome') or 
+                     latest_income.get('Net Income') or 
+                     latest_income.get('NetIncomeCommonStockholders') or 0)
+        revenue = (latest_income.get('TotalRevenue') or
+                  latest_income.get('Total Revenue') or 
+                  latest_income.get('OperatingRevenue') or
+                  latest_income.get('Operating Revenue') or 0)
         total_equity = latest_balance.get('Stockholders Equity', 0) or latest_balance.get('Total Equity Gross Minority Interest', 0) or latest_balance.get('Common Stock Equity', 0)
         total_assets = latest_balance.get('Total Assets', 0)
         total_debt = latest_balance.get('Total Debt', 0) or 0
